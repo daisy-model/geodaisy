@@ -1,0 +1,57 @@
+#map {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    cursor: crosshair;
+}
+
+.boxdraw {
+    background: rgba(174, 203, 205, 0.0);
+    border: 2px dashed rgb(79, 120, 97);
+    position: absolute;
+    z-index: 100;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+}
+
+#legend-box {
+    position: absolute;
+    top: 80px;
+    right: 80px;
+    width: 400pt;
+    border: 3px solid rgb(79, 120, 97);
+    padding: 15px 15px 15px 15px;
+    background-color: rgb(174, 203, 205);
+    font-family: 'Courier New', Courier, monospace;
+    opacity: 0.86;
+}
+
+#example-deck-tooltip {
+    position: absolute;
+    background-color: beige;
+    font-family: 'Courier New', Courier, monospace;
+    width: 15%;
+    height: 15%;
+}
+
+#soil-horizont {
+    position: absolute;
+    background-color: black;
+    height: 100px;
+    width: 20px;
+}
+
+#menu {
+    position: absolute;
+    background: #fff;
+    padding: 10px;
+    font-family: 'Open Sans', sans-serif;
+}
+
+#plot {
+    width: 100%;
+}

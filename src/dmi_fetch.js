@@ -2,12 +2,12 @@ const dmi_url = "https://dmigw.govcloud.dk";
 
 class DMIOpenDataClient {
     constructor(data = undefined, is_initialized = false) {
-        this.data = data;
+        this.data           = data;
         this.is_initialized = is_initialized;
-        this.api_key = "";
-        this.api_name = "";
-        this.version = "";
-        this.base_url = "";
+        this.api_key        = "";
+        this.api_name       = "";
+        this.version        = "";
+        this.base_url       = "";
     }
 
     client_data() {
@@ -19,18 +19,20 @@ class DMIOpenDataClient {
     }
 
     static async initialize(api_key, api_name, version) {
+        const allowed_apis = ["metObs", "climateData"];
         if (api_key == undefined) throw new Error(`Invalid value for \`api_key\`: ${api_key}`);
-        //if ((api_name != "metObs") || (api_name != "climateData")) throw new Error(`Following api is not supported yet: ${api_name}`);
+        if (!(allowed_apis.includes(api_name))) throw new Error(`Following api is not supported yet: ${api_name}`);
         if (version == "v1") throw new Error("DMI metObs v1 not longer supported");
         if (version != "v2") throw new Error(`API version ${version} not supported`);
 
-        const service = "collections/station/items";
-        const base_url = `${dmi_url}/${version}/${api_name}`;
-        const url = `${base_url}/${service}?api-key=${api_key}`;
+        const service   = "collections/station/items";
+        const base_url  = `${dmi_url}/${version}/${api_name}`;
+        const url       = `${base_url}/${service}?api-key=${api_key}`;
 
-        const response = await fetch(url);
-        let http_status_code = response["status"]
-        if (http_status_code != 200) {
+        const response          = await fetch(url);
+        let http_status_code    = response["status"]
+        
+        if (http_status_code!= 200) {
             message = response["statusText"]
             throw new Error(
                 `Failed HTTP request with HTTP status code ${http_status_code} and message: ${message}`);
@@ -38,10 +40,10 @@ class DMIOpenDataClient {
 
         const data = await response.json();
 
-        let client = new DMIOpenDataClient(data, true);
-        client.api_key = api_key;
+        let client      = new DMIOpenDataClient(data, true);
+        client.api_key  = api_key;
         client.api_name = api_name;
-        client.version = version;
+        client.version  = version;
         client.base_url = base_url;
 
         return client;

@@ -2,6 +2,17 @@
 Uses [Vite](https://vitejs.dev/) to bundle and serve files.
 
 ## Usage
+To  setup API tokens and other local variables, you need to create a file called `env.js` in the root of this folder, containing the following variable definitions (add your own API tokens):
+
+```
+const MyEnv = {
+    DMI_API_KEY_METOBS: ,
+    DMI_API_KEY_CLIMATE: ,
+    MAPBOX_TOKEN: 
+}
+
+export { MyEnv }
+```
 
 To install dependencies:
 

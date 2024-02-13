@@ -1,7 +1,13 @@
 import {MapboxOverlay as DeckOverlay} from '@deck.gl/mapbox';
 import mapboxgl from 'mapbox-gl';
 
-mapboxgl.accessToken = 'pk.eyJ1Ijoic25pZWJlIiwiYSI6ImNsZmppMGJqNTAxMWYzem8xY243NXY1MncifQ.6CHKZXlSjbaTqtNHRLQ4qA';
+import { DMIOpenDataClient } from './src/dmi_fetch.js'
+import { MyEnv } from './env.js';
+
+mapboxgl.accessToken = MyEnv.MAPBOX_TOKEN;
+
+const DMICLIENT_CLI = await DMIOpenDataClient.initialize(MyEnv.DMI_API_KEY_CLIMATE, "climateData", "v2");
+const DMICLIENT_MET = await DMIOpenDataClient.initialize(MyEnv.DMI_API_KEY_METOBS, "metObs", "v2");
 
 const map = new mapboxgl.Map({
   container: 'map',

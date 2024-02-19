@@ -26,6 +26,21 @@ Commands:
 * `npm start` is the development target, to serve the app and hot reload.
 * `npm run build` is the production target, to create the final bundle and write to disk.
 
+Run server script in `resources` folder, and add LOCALHOST variable to the `env.js` file, e.g.:
+
+```
+const MyEnv = {
+    DMI_API_KEY_METOBS: ,
+    DMI_API_KEY_CLIMATE: ,
+    MAPBOX_TOKEN: ,
+    LOCALHOST: "http://localhost:8040/",
+}
+
+export { MyEnv }
+```
+Here it is assumed you have given the port number `8040` as an argument when running `resources/myServer.py`.
+
+
 ### Basemap
 
 The basemap in this example is provided by [CARTO free basemap service](https://carto.com/basemaps). To use an alternative base map solution, visit [this guide](https://deck.gl/docs/get-started/using-with-map#using-other-basemap-services)

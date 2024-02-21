@@ -106,7 +106,57 @@ class DMIOpenDataClient {
         }
         return closest_station;
     }
+
+    static async get_data(client, lat, lng, from_time=undefined, to_time=undefined, time_resolution = "hour", params = []) {
+
+        let stations = [];
+        var ps = new Map();
+
+        for (const p of params) {
+            const station = await this.get_closest_station(client, lat, lng, [p]);
+            if (station == undefined) {
+                console.log("None found");
+                continue;
+            }
+
+            const coordinates = station.geometry.coordinates;
+            const station_id = station.properties.stationId;
+            const dist = Helpers.distance(lat, lng, coordinates[1], coordinates[0]);
+            const station_object = { 'par': p, 'id': station_id, 'dist': dist, 'lat': coordinates[1], 'lon': coordinates[0] };
+           
+            stations.push(station_object);
+            const [v,i] = await this.get_series(client, p, station_id, time_resolution, from_time, to_time);//should receive time argument
+            if(v.length > 0){
+                ps.set(p,[v,i]); //find better data structure
+            }
+        }
+
+        return [ps,stations];
+    }
+
+    static async get_series(client, par, station_id, timeres, from_time, to_time) {
+        
+        console.log(`Looking up parameter  ${par}`);
+        const data = await this.get_climate_data(client, par, station_id,from_time,to_time, timeres, 200000);
+        if (data.length > 0) console.log(`Has ${data.length} datapoints`);
+        else console.log("No data, ignoring");
+
+        let val = [];
+        let idx = [];
+        for(const i of data){
+            val.push(i['properties']['value']);
+            idx.push(new Date(i['properties']['to']).toISOString());
+        }
+        return [val, idx]; //find better structure
+    }
+
+    static async get_climate_data(client, parameter, station_id, from_time, to_time, time_resolution="hour", limit, offset=0) {
+        const data = await this.query(client, "climateData", "collections/stationValue/items", { "parameterId": parameter, "stationId": station_id, "datetime": Helpers.construct_datetime_argument(from_time, to_time), "timeResolution": time_resolution, "limit": limit, "offset": offset });
+        return data.features;
+    }
 }
+
+
 
 class Helpers{
 
@@ -122,6 +172,19 @@ class Helpers{
         const CONST_EARTH_DIAMETER = 12742; // km
         const a = 0.5 - Math.cos((lat2 - lat1) * p) / 2.0 + Math.cos(lat1 * p) * Math.cos(lat2 * p) * (1.0 - Math.cos((lon2 - lon1) * p)) / 2;
         return CONST_EARTH_DIAMETER * Math.asin(Math.sqrt(a));  // 2*R*asin...
+    }
+
+    static construct_datetime_argument(from_time, to_time) {
+        if(from_time == undefined && to_time == undefined){
+            return "";
+        }
+        if(from_time != undefined && to_time == undefined){
+            return `${new Date(from_time).toISOString()}/${new Date().toISOString()}`
+        }
+        if(from_time == undefined && to_time != undefined){
+            return `${new Date(to_time).toISOString()}`
+        }
+        return `${new Date(from_time).toISOString()}/${new Date(to_time).toISOString()}`
     }
 }
 export { DMIOpenDataClient };

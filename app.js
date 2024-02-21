@@ -9,6 +9,10 @@ mapboxgl.accessToken = MyEnv.MAPBOX_TOKEN;
 const DMICLIENT_CLI = await DMIOpenDataClient.initialize(MyEnv.DMI_API_KEY_CLIMATE, "climateData", "v2");
 const DMICLIENT_MET = await DMIOpenDataClient.initialize(MyEnv.DMI_API_KEY_METOBS, "metObs", "v2");
 
+const SPINNING_ICON = `url(${MyEnv.LOCALHOST}/resources/180-ring-with-bg.svg)`;
+const LOCATION_ICON = `url(${MyEnv.LOCALHOST}/resources/map-pin-ellipse-svgrepo-com.svg)`;
+const STATION_ICON  = `url(${MyEnv.LOCALHOST}/resources/weather-icons-67-svgrepo-com.svg)`;
+
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/light-v11',
@@ -21,7 +25,7 @@ const map = new mapboxgl.Map({
 //start --- testing reading the fetched data and drawing icons on the map
 const clickedLayer = document.createElement('div');
 clickedLayer.className = 'clicked_marker';
-clickedLayer.style.backgroundImage = `url(${MyEnv.LOCALHOST}/resources/map-pin-ellipse-svgrepo-com.svg)`;
+clickedLayer.style.backgroundImage = SPINNING_ICON;
 clickedLayer.style.width = `60px`;
 clickedLayer.style.height = `60px`;
 clickedLayer.style.backgroundSize = '100%';
@@ -32,24 +36,43 @@ var station_markers = [];
 map.on('click', async (e) => {
   // place marker at clicked location
   location_marker.setLngLat(e.lngLat).addTo(map);
+  //location_marker.setLngLat(map.getCenter()).addTo(map);
 
-  // clearing previously set station markers
+  // clearing previously set station markers and resetting to spinning marker
   if (station_markers.length > 0) {
+    clickedLayer.style.backgroundImage = SPINNING_ICON;
     for (const m of station_markers) {
       m.remove();
     }
     station_markers.length = 0;
   }
   // fetch closest station to clicked location
-  const station = await DMIOpenDataClient.get_closest_station(DMICLIENT_CLI, e.lngLat.lat, e.lngLat.lng);
-  const stationLayer = document.createElement('div');
-  stationLayer.className = 'station_marker';
-  stationLayer.style.backgroundImage = `url(${MyEnv.LOCALHOST}/resources/weather-icons-67-svgrepo-com.svg)`;
-  stationLayer.style.width = `60px`;
-  stationLayer.style.height = `60px`;
-  stationLayer.style.backgroundSize = '100%';
+  const params = ["acc_precip", "mean_temp", "mean_relative_hum", "mean_wind_speed", "mean_radiation"];
 
-  station_markers.push(new mapboxgl.Marker(stationLayer).setLngLat([station.geometry.coordinates[0], station.geometry.coordinates[1]]).addTo(map));
+  const startdate = document.getElementById("startdate").value;
+  const enddate = document.getElementById("enddate").value;
+
+  const [ps, stations] = await DMIOpenDataClient.get_data(DMICLIENT_CLI, e.lngLat.lat, e.lngLat.lng, startdate, enddate, "hour", params);
+
+  for (const station of stations) {
+    const stationLayer = document.createElement('div');
+    stationLayer.className = 'station_marker';
+    stationLayer.style.backgroundImage = STATION_ICON;
+    stationLayer.style.width = `60px`;
+    stationLayer.style.height = `60px`;
+    stationLayer.style.backgroundSize = '100%';
+    station_markers.push(new mapboxgl.Marker(stationLayer).setLngLat([station.lon, station.lat]).addTo(map));
+  }
+
+  // data has been fetched, update spinner to location marker
+  location_marker.setLngLat(e.lngLat).addTo(map);
+  clickedLayer.style.backgroundImage = LOCATION_ICON;
+  
+  // inject html into the bottom of the parameter box
+  /*
+    const html_to_insert = `<p> Done collecting data </p>`
+    document.getElementById('parameter-text').insertAdjacentHTML('beforeend', html_to_insert);
+  */
 
 })
 //end --- testing reading the fetched data and drawing icons on the map

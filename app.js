@@ -1,17 +1,17 @@
 import { MapboxOverlay as DeckOverlay } from '@deck.gl/mapbox';
 import mapboxgl from 'mapbox-gl';
-
+import { saveAs } from 'file-saver';
 import { DMIOpenDataClient } from './src/dmi_fetch.js'
 import { MyEnv } from './env.js';
 
 mapboxgl.accessToken = MyEnv.MAPBOX_TOKEN;
 
-const DMICLIENT_CLI = await DMIOpenDataClient.initialize(MyEnv.DMI_API_KEY_CLIMATE, "climateData", "v2");
-const DMICLIENT_MET = await DMIOpenDataClient.initialize(MyEnv.DMI_API_KEY_METOBS, "metObs", "v2");
+const DMICLIENT_CLI = new DMIOpenDataClient(MyEnv.DMI_API_KEY_CLIMATE, "climateData", "v2");
+const DMICLIENT_MET = new DMIOpenDataClient(MyEnv.DMI_API_KEY_METOBS, "metObs", "v2");
 
 const SPINNING_ICON = `url(${MyEnv.LOCALHOST}/resources/180-ring-with-bg.svg)`;
 const LOCATION_ICON = `url(${MyEnv.LOCALHOST}/resources/map-pin-ellipse-svgrepo-com.svg)`;
-const STATION_ICON  = `url(${MyEnv.LOCALHOST}/resources/weather-icons-67-svgrepo-com.svg)`;
+const STATION_ICON = `url(${MyEnv.LOCALHOST}/resources/weather-icons-67-svgrepo-com.svg)`;
 
 const map = new mapboxgl.Map({
   container: 'map',
@@ -36,7 +36,6 @@ var station_markers = [];
 map.on('click', async (e) => {
   // place marker at clicked location
   location_marker.setLngLat(e.lngLat).addTo(map);
-  //location_marker.setLngLat(map.getCenter()).addTo(map);
 
   // clearing previously set station markers and resetting to spinning marker
   if (station_markers.length > 0) {
@@ -61,19 +60,33 @@ map.on('click', async (e) => {
     stationLayer.style.width = `60px`;
     stationLayer.style.height = `60px`;
     stationLayer.style.backgroundSize = '100%';
-    station_markers.push(new mapboxgl.Marker(stationLayer).setLngLat([station.lon, station.lat]).addTo(map));
+    station_markers.push(new mapboxgl.Marker(stationLayer).setLngLat([station.get('lon'), station.get('lat')]).addTo(map));
   }
 
   // data has been fetched, update spinner to location marker
   location_marker.setLngLat(e.lngLat).addTo(map);
   clickedLayer.style.backgroundImage = LOCATION_ICON;
-  
-  // inject html into the bottom of the parameter box
-  /*
-    const html_to_insert = `<p> Done collecting data </p>`
-    document.getElementById('parameter-text').insertAdjacentHTML('beforeend', html_to_insert);
-  */
 
+  // add buttons to download_area div
+  document.getElementById("download_area").innerHTML = `
+        <p>Location selected is: ${e.lngLat.lng.toFixed(4)}, ${e.lngLat.lat.toFixed(4)} </p>
+        <button id="getdmidata" type='button'>Download weather data</button></br>
+        <button id="getmetadata" type='button'>Download weather meta data</button>
+        `;
+  // add listeners to the buttons, to save the fetched data
+  document.getElementById("getdmidata").addEventListener("click", function () {
+    ps.sortBy('time_stamp');
+    const file_content = ps.toCSV(true);
+    saveAs(new Blob([file_content], {
+      type: "text/plain;charset=utf-8",
+    }), "dmi_observations.txt");
+  });
+  document.getElementById("getmetadata").addEventListener("click", function () {
+    const file_content = stations.toCSV(true);
+    saveAs(new Blob([file_content], {
+      type: "text/plain;charset=utf-8",
+    }), "dmi_meta.txt");
+  });
 })
 //end --- testing reading the fetched data and drawing icons on the map
 

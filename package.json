@@ -12,6 +12,7 @@
         "@deck.gl/core": "^8.8.0",
         "@deck.gl/layers": "^8.8.0",
         "@deck.gl/mapbox": "^8.8.0",
+        "dataframe-js": "^1.4.4",
         "file-saver": "^2.0.5",
         "mapbox-gl": "^1.13.0"
     },

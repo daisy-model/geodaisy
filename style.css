@@ -55,3 +55,36 @@
 #plot {
     width: 100%;
 }
+
+.collapsible {
+    background-color: #f1f1f1;
+    cursor: pointer;
+    padding: 2px;
+    width: 100%;
+    border: 1px solid rgb(114, 128, 120);
+    text-align: center;
+    outline: none;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  
+  .active, .collapsible:hover {
+    background-color: #93a894;
+  }
+  
+  .content {
+    padding: 0 18px 10px;
+    display: none;
+    overflow: hidden;
+  }
+
+  .collapsible:after {
+    content: '\002B';
+    color: rgb(53, 51, 51);
+    font-weight: bold;
+    float: left;
+    margin-left: 5px;
+  }
+  
+  .active:after {
+    content: "\2212";
+  }

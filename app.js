@@ -25,7 +25,7 @@ const map = new mapboxgl.Map({
 //start --- testing reading the fetched data and drawing icons on the map
 const clickedLayer = document.createElement('div');
 clickedLayer.className = 'clicked_marker';
-clickedLayer.style.backgroundImage = SPINNING_ICON;
+clickedLayer.style.backgroundImage = LOCATION_ICON;
 clickedLayer.style.width = `60px`;
 clickedLayer.style.height = `60px`;
 clickedLayer.style.backgroundSize = '100%';
@@ -39,13 +39,114 @@ map.on('click', async (e) => {
 
   // clearing previously set station markers and resetting to spinning marker
   if (station_markers.length > 0) {
-    clickedLayer.style.backgroundImage = SPINNING_ICON;
+    clickedLayer.style.backgroundImage = LOCATION_ICON;
     for (const m of station_markers) {
       m.remove();
     }
     station_markers.length = 0;
   }
-  // fetch closest station to clicked location
+
+  const soil_column = [{ type: "TopSoil", depth: 2 }, { type: "Clay", depth: 5 }];
+  var soil_str = "Soil column: ";
+  for (const s of soil_column) {
+    soil_str = `${soil_str} ${s.type} at ${s.depth}m</br>`;
+  }
+  document.getElementById("parameter-text").innerHTML = `
+      <p>Location selected is: ${e.lngLat.lng.toFixed(4)}, ${e.lngLat.lat.toFixed(4)} </br></p>
+      `;
+  document.getElementById("location_specific_data").innerHTML = `
+        <button type="button" class="collapsible">Management</button>
+        <div class="content">
+        <p>Management data source: <a href='https://lbst.dk'>LBST</a></p>
+        <p>Soil usage is: Farmland, intensive </br></p>
+        <button id="getfielddata" type='button'>Download management file</button></br>
+        </div>
+        <button type="button" class="collapsible">Soil</button>
+        <div class="content">
+        <p>Soil data source: <a href='https://pure.au.dk/portal/da/projects/digital-jordbundskortl%C3%A6gning-ud-fra-satellit-sensordata-og-modelb'>DIGIJORD</a></p>
+          <p>${soil_str}</p>
+        <button id="getcolumndata" type='button'>Download soil column</button></br>
+        </div>`;
+  // add buttons to time_specific_data div
+  document.getElementById("time_specific_data").innerHTML = `
+  <button type="button" class="collapsible">Weather</button>
+  <div class="content">
+      <p>Weather data source: <a href='https://www.dmi.dk/'>DMI</a></p>
+        <label for="startdate">Start date:</label>
+        <input type="date" id="startdate" name="time-start" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
+        <label for="enddate">End date:</label>
+        <input type="date" id="enddate" name="time-end" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
+      </br></br>
+        <button id="getdmidata" type='button'>Download weather data</button></br>
+        <button id="getmetadata" type='button'>Download weather meta data</button></br>
+      </div>
+      <button type="button" class="collapsible">Hydrology</button>
+      <div class="content">
+        <p>Hydrologic data source: <a href='https://hip.dataforsyningen.dk/'>HIP</a> </p>
+        <button id="getpressuredata" type='button'>Download pressure table</button>
+        </div>`;
+  // add listeners to the buttons, to save the fetched data
+  document.getElementById("getdmidata").addEventListener("click", async function () {
+    // fetch closest station to clicked location
+    clickedLayer.style.backgroundImage = SPINNING_ICON;
+    const [ps, stations] = await fetchDMI(e);
+    // data has been fetched, update spinner to location marker
+    clickedLayer.style.backgroundImage = LOCATION_ICON;
+    ps.sortBy('time_stamp');
+    const file_content = ps.toCSV(true);
+    saveAs(new Blob([file_content], {
+      type: "text/plain;charset=utf-8",
+    }), "dmi_observations.csv");
+  });
+  document.getElementById("getmetadata").addEventListener("click", async function () {
+    // fetch closest station to clicked location
+    clickedLayer.style.backgroundImage = SPINNING_ICON;
+    const [ps, stations] = await fetchDMI(e);
+    // data has been fetched, update spinner to location marker
+    clickedLayer.style.backgroundImage = LOCATION_ICON;
+    const file_content = stations.toCSV(true);
+    saveAs(new Blob([file_content], {
+      type: "text/plain;charset=utf-8",
+    }), "dmi_meta.csv");
+  });
+  document.getElementById("getpressuredata").addEventListener("click", function () {
+    const file_content = "not yet implemented";
+    saveAs(new Blob([file_content], {
+      type: "text/plain;charset=utf-8",
+    }), "pressure_table.csv");
+  });
+  document.getElementById("getcolumndata").addEventListener("click", function () {
+    const file_content = "not yet implemented";
+    saveAs(new Blob([file_content], {
+      type: "text/plain;charset=utf-8",
+    }), "soil_column.dai");
+  });
+
+  document.getElementById("getfielddata").addEventListener("click", function () {
+    const file_content = "not yet implemented";
+    saveAs(new Blob([file_content], {
+      type: "text/plain;charset=utf-8",
+    }), "management.dai");
+  });
+  var coll = document.getElementsByClassName("collapsible");
+  var i;
+
+  for (i = 0; i < coll.length; i++) {
+    coll[i].addEventListener("click", function () {
+      this.classList.toggle("active");
+      var content = this.nextElementSibling;
+      if (content.style.display === "block") {
+        content.style.display = "none";
+      } else {
+        content.style.display = "block";
+      }
+    });
+  }
+})
+
+//end --- testing reading the fetched data and drawing icons on the map
+
+async function fetchDMI(e) {
   const params = ["acc_precip", "mean_temp", "mean_relative_hum", "mean_wind_speed", "mean_radiation"];
 
   const startdate = document.getElementById("startdate").value;
@@ -63,31 +164,7 @@ map.on('click', async (e) => {
     station_markers.push(new mapboxgl.Marker(stationLayer).setLngLat([station.get('lon'), station.get('lat')]).addTo(map));
   }
 
-  // data has been fetched, update spinner to location marker
-  location_marker.setLngLat(e.lngLat).addTo(map);
-  clickedLayer.style.backgroundImage = LOCATION_ICON;
+  return [ps, stations];
 
-  // add buttons to download_area div
-  document.getElementById("download_area").innerHTML = `
-        <p>Location selected is: ${e.lngLat.lng.toFixed(4)}, ${e.lngLat.lat.toFixed(4)} </p>
-        <button id="getdmidata" type='button'>Download weather data</button></br>
-        <button id="getmetadata" type='button'>Download weather meta data</button>
-        `;
-  // add listeners to the buttons, to save the fetched data
-  document.getElementById("getdmidata").addEventListener("click", function () {
-    ps.sortBy('time_stamp');
-    const file_content = ps.toCSV(true);
-    saveAs(new Blob([file_content], {
-      type: "text/plain;charset=utf-8",
-    }), "dmi_observations.txt");
-  });
-  document.getElementById("getmetadata").addEventListener("click", function () {
-    const file_content = stations.toCSV(true);
-    saveAs(new Blob([file_content], {
-      type: "text/plain;charset=utf-8",
-    }), "dmi_meta.txt");
-  });
-})
-//end --- testing reading the fetched data and drawing icons on the map
-
+}
 map.addControl(new mapboxgl.NavigationControl());

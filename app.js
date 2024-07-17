@@ -21,6 +21,28 @@ const map = new mapboxgl.Map({
   bearing: 0,
   pitch: 0
 });
+//start -- adding a polygon layer via lbst.dk WMS data
+map.on('load', () => {
+  map.addSource('wms-miljoegis-source', {
+      'type': 'raster',
+      // use the tiles option to specify a WMS tile source URL
+      // https://docs.mapbox.com
+      // https://docs.mapbox.com/style-spec/reference/sources/
+      'tiles': [
+        'http://geodata.fvm.dk/geoserver/Marker/wms?&format=image/png&service=WMS&version=1.1.1&request=GetMap&srs=EPSG:3857&width=256&height=256&layers=Marker:Marker_2015&bbox={bbox-epsg-3857}&transparent=true/'],
+      'tileSize': 256
+  });
+  map.addLayer(
+      {
+          'id': 'wms-miljoegis-layer',
+          'type': 'raster',
+          'source': 'wms-miljoegis-source',
+          'paint': {}
+      }
+      //,'building' // Place layer under labels, roads and buildings.
+  );
+});
+//end -- adding a polygon layer via lbst.dk WMS data
 
 //start --- testing reading the fetched data and drawing icons on the map
 const clickedLayer = document.createElement('div');

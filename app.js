@@ -6,8 +6,8 @@ import { MyEnv } from './env.js';
 
 mapboxgl.accessToken = MyEnv.MAPBOX_TOKEN;
 
-const DMICLIENT_CLI = new DMIOpenDataClient(MyEnv.DMI_API_KEY_CLIMATE, "climateData", "v2");
-const DMICLIENT_MET = new DMIOpenDataClient(MyEnv.DMI_API_KEY_METOBS, "metObs", "v2");
+const DMICLIENT_CLI = new DMIOpenDataClient("climateData", "v2");
+const DMICLIENT_MET = new DMIOpenDataClient("metObs", "v2");
 
 const SPINNING_ICON = `url(${MyEnv.LOCALHOST}/resources/180-ring-with-bg.svg)`;
 const LOCATION_ICON = `url(${MyEnv.LOCALHOST}/resources/map-pin-ellipse-svgrepo-com.svg)`;

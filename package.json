@@ -3,20 +3,30 @@
     "version": "0.0.0",
     "private": true,
     "license": "MIT",
+    "type": "module",
     "scripts": {
         "start": "vite --open",
-        "start-local": "vite --config ../../../vite.config.local.mjs",
-        "build": "vite build"
+        "dev:server": "nodemon server.js",
+        "dev": "concurrently \"npm:dev:server\" \"npm:start\"",
+        "server": "node server.js",
+        "build": "vite build",
+        "preview": "vite preview"
     },
     "dependencies": {
         "@deck.gl/core": "^8.8.0",
         "@deck.gl/layers": "^8.8.0",
         "@deck.gl/mapbox": "^8.8.0",
+        "cors": "^2.8.5",
         "dataframe-js": "^1.4.4",
+        "dotenv": "^16.5.0",
+        "express": "^5.1.0",
         "file-saver": "^2.0.5",
-        "mapbox-gl": "^1.13.0"
+        "mapbox-gl": "^1.13.0",
+        "node-fetch": "^3.3.2"
     },
     "devDependencies": {
+        "concurrently": "^8.2.2",
+        "nodemon": "^3.1.4",
         "vite": "^4.0.0"
     }
 }

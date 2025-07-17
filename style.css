@@ -28,6 +28,7 @@
     background-color: rgb(174, 203, 205);
     font-family: 'Courier New', Courier, monospace;
     opacity: 0.86;
+    border-radius: 15px;
 }
 
 #example-deck-tooltip {
@@ -65,6 +66,7 @@
     text-align: center;
     outline: none;
     font-family: 'Courier New', Courier, monospace;
+    border-radius: 5px;
   }
   
   .active, .collapsible:hover {

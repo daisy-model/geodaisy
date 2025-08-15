@@ -14,6 +14,9 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    allowedHosts: true // ['daisy', 'geodaisy.dk', 'localhost', '127.0.0.1']
+  },
   build: {
     rollupOptions: {
       output: {

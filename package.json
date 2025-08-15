@@ -5,12 +5,13 @@
     "license": "MIT",
     "type": "module",
     "scripts": {
-        "start": "vite --open",
-        "dev:server": "nodemon server.js",
-        "dev": "concurrently \"npm:dev:server\" \"npm:start\"",
-        "server": "node server.js",
-        "build": "vite build",
-        "preview": "vite preview"
+      "start": "vite --open",
+      "dev:server": "nodemon server.js",
+      "dev": "concurrently \"npm:dev:server\" \"npm:start\"",
+      "build": "vite build",
+      "server": "node server.js",
+      "serve": "vite preview --host 0.0.0.0",
+      "start-prod": "npm run build && concurrently \"npm:serve\" \"npm:server\""
     },
     "dependencies": {
         "@deck.gl/core": "^8.8.0",

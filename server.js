@@ -11,11 +11,14 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Configure CORS for development
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ["http://localhost:5173"]; // Default for development
+
 app.use(
   cors({
-    origin: "http://localhost:5173", // Vite dev server default
-    // TODO: add prod domain name, read from meta.env
-    // In production, limit to your actual domain
+    origin: allowedOrigins,
+    optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
   })
 );
 

@@ -30,6 +30,15 @@ SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 echo "Installing service for user: ${TARGET_USER}"
 echo "Application directory: ${APP_DIR}"
 
+# --- Check for .env file ---
+if [ ! -f "${APP_DIR}/.env" ]; then
+    echo "Warning: '.env' file not found in ${APP_DIR}."
+    echo "This file is required for the service to run correctly as it contains API keys and other settings."
+    echo "Please create a '.env' file before starting the service."
+    # The script will continue, but systemctl start will likely fail later.
+fi
+# --- End Check for .env file ---
+
 # --- Find npm for the target user ---
 # This is tricky because of nvm/nodenv etc.
 # We will try to find it by running a command as the user.
@@ -59,9 +68,11 @@ User=${TARGET_USER}
 Group=$(id -gn "$TARGET_USER")
 WorkingDirectory=${APP_DIR}
 
-# Set environment variables for the service
-Environment="NODE_ENV=production"
-Environment="PORT=3000"
+# Load environment variables from .env file.
+# The .env file is the source of truth for all environment variables for the service.
+# systemd will silently ignore this directive if the file does not exist,
+# but the application will likely fail to start without it.
+EnvironmentFile=${APP_DIR}/.env
 
 ExecStart=${NPM_PATH} run ${PROD_SERVER_SCRIPT_NAME}
 
@@ -97,6 +108,7 @@ echo ""
 echo "IMPORTANT:"
 echo "1. Ensure you have run 'npm install' to install dependencies."
 echo "2. Ensure you have run 'npm run build' to create the production build."
+echo "3. Ensure your '.env' file exists and contains all required variables for production (e.g., NODE_ENV=production, PORT, API keys)."
 echo ""
 echo "You can check the service status with:"
 echo "   sudo systemctl status ${SERVICE_NAME}"

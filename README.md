@@ -37,7 +37,7 @@ This project uses:
         # .env - DO NOT COMMIT THIS FILE!
         DMI_API_KEY_METOBS="YOUR_DMI_METOBS_API_KEY"
         DMI_API_KEY_CLIMATE="YOUR_DMI_CLIMATE_API_KEY"
-        VITE_MAPBOX_TOKEN: "YOUR_PUBLIC_MAPBOX_TOKEN"
+        VITE_MAPBOX_TOKEN="YOUR_PUBLIC_MAPBOX_TOKEN"
         ```
 
 ## Development
@@ -54,9 +54,13 @@ To run the application locally for development:
 The Vite dev server will automatically proxy API requests starting with `/api/` to your backend
 server, thanks to the configuration in `vite.config.js`.
 
-## Building for Production
+## Production
 
-To create an optimized build of the frontend application:
+Instructions for building, running, and deploying the application in a production environment.
+
+### Building the Application
+
+To create an optimized build of the frontend application for production:
 
 ```bash
 npm run build
@@ -64,22 +68,51 @@ npm run build
 
 This command generates static HTML, CSS, and JavaScript files in the `dist` directory.
 
-## Testing the Production Build Locally
+### Running the Production Build
 
-Before deploying, you can test the production build locally:
+After building, you can run the production-ready application.
 
-1.  **Ensure the backend server is running:** ```bash npm run server # or node --watch server.js ```
-    (Keep this running in a separate terminal).
+The easiest way to start both the backend server and the frontend server is:
 
-2.  **Run the preview command:**
-    (Make sure you have run `npm run build` first)
+```bash
+npm run start-prod
+```
+
+This command first runs `npm run build` and then concurrently starts both the backend API server and the Vite preview server for the static frontend files.
+
+If you have already built the application and want to skip the build step, you can run:
+```bash
+npm run start-prod-server
+```
+
+### Deploying as a Service (Linux)
+
+For deploying on a Linux server, the repository includes scripts to manage the application as a `systemd` service. This ensures the application restarts automatically if it crashes or the server reboots.
+
+1.  **Build the application:**
+    Ensure you have all dependencies installed (`npm install`) and have created a production build:
     ```bash
-    npm run preview
+    npm run build
     ```
 
-3.  **Access the application:** Open your browser to the URL provided by `vite preview` (e.g.,
-    `http://localhost:4173`). This serves the files from `dist` and uses the same proxy
-    configuration for API calls.
+2.  **Install the service:**
+    Run the installation script with `sudo`. This will create a `systemd` service file and start the service.
+    ```bash
+    npm run install-service
+    ```
+    The service runs the `npm run start-prod-server` command.
+
+3.  **Manage the service:**
+    You can now manage the service using standard `systemctl` commands, e.g.:
+    *   `sudo systemctl status geodaisy.service`
+    *   `sudo systemctl stop geodaisy.service`
+    *   `sudo systemctl start geodaisy.service`
+
+4.  **Uninstall the service:**
+    To stop and remove the `systemd` service:
+    ```bash
+    npm run uninstall-service
+    ```
 
 
 ## Basemap

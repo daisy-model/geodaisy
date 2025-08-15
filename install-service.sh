@@ -5,6 +5,7 @@
 SERVICE_NAME="geodaisy"
 SERVICE_DESCRIPTION="Geodaisy the webpage"
 PROD_SERVER_SCRIPT_NAME="start-prod-server"
+INSTALL_DIR="/opt/${SERVICE_NAME}"
 # --- End Configuration ---
 
 # --- Pre-flight checks ---
@@ -24,20 +25,38 @@ fi
 
 # --- Environment Setup ---
 TARGET_USER=$SUDO_USER
-APP_DIR=$(pwd)
+SOURCE_DIR=$(pwd)
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
 echo "Installing service for user: ${TARGET_USER}"
-echo "Application directory: ${APP_DIR}"
+echo "Source directory: ${SOURCE_DIR}"
+echo "Installation directory: ${INSTALL_DIR}"
 
-# --- Check for .env file ---
-if [ ! -f "${APP_DIR}/.env" ]; then
-    echo "Warning: '.env' file not found in ${APP_DIR}."
-    echo "This file is required for the service to run correctly as it contains API keys and other settings."
-    echo "Please create a '.env' file before starting the service."
-    # The script will continue, but systemctl start will likely fail later.
+# --- Create installation directory and copy files ---
+echo "Creating installation directory..."
+mkdir -p "$INSTALL_DIR"
+
+echo "Copying application files to ${INSTALL_DIR}..."
+# Use rsync to copy all files except development/transient ones.
+# The --delete flag ensures that the destination matches the source, removing old files.
+rsync -a --delete \
+  --exclude=".git" \
+  --exclude="node_modules" \
+  --exclude="install-service.sh" \
+  "${SOURCE_DIR}/" "${INSTALL_DIR}/"
+
+# Check for .env file in source and copy it.
+if [ -f "${SOURCE_DIR}/.env" ]; then
+    echo "Copying .env file..."
+    cp "${SOURCE_DIR}/.env" "${INSTALL_DIR}/.env"
+else
+    echo "Warning: '.env' file not found in source directory."
+    echo "The service will likely fail to start. You may need to create it manually at ${INSTALL_DIR}/.env"
 fi
-# --- End Check for .env file ---
+
+echo "Setting ownership for ${INSTALL_DIR}..."
+chown -R "$TARGET_USER:$(id -gn "$TARGET_USER")" "$INSTALL_DIR"
+# --- End copy and file operations ---
 
 # --- Find npm for the target user ---
 # This is tricky because of nvm/nodenv etc.
@@ -53,6 +72,25 @@ fi
 echo "Found npm at: ${NPM_PATH}"
 # --- End Find npm ---
 
+# --- Install dependencies and build in the new location ---
+echo "Installing production dependencies in ${INSTALL_DIR}..."
+# Run npm install as the target user to respect their environment and permissions
+if ! su - "$TARGET_USER" -c "cd \"$INSTALL_DIR\" && $NPM_PATH install --omit=dev"; then
+    echo "Error: 'npm install' failed. Please check the output above."
+    # Clean up created directory on failure
+    rm -rf "$INSTALL_DIR"
+    exit 1
+fi
+
+echo "Building production assets in ${INSTALL_DIR}..."
+# Run npm run build as the target user
+if ! su - "$TARGET_USER" -c "cd \"$INSTALL_DIR\" && $NPM_PATH run build"; then
+    echo "Error: 'npm run build' failed. Please check the output above."
+    rm -rf "$INSTALL_DIR"
+    exit 1
+fi
+# --- End install and build ---
+
 # --- Create systemd service file ---
 echo "Creating systemd service file at ${SERVICE_FILE}..."
 
@@ -66,13 +104,12 @@ After=network.target
 Type=simple
 User=${TARGET_USER}
 Group=$(id -gn "$TARGET_USER")
-WorkingDirectory=${APP_DIR}
+WorkingDirectory=${INSTALL_DIR}
 
-# Load environment variables from .env file.
-# The .env file is the source of truth for all environment variables for the service.
+# Load environment variables from .env file in the installation directory.
 # systemd will silently ignore this directive if the file does not exist,
 # but the application will likely fail to start without it.
-EnvironmentFile=${APP_DIR}/.env
+EnvironmentFile=${INSTALL_DIR}/.env
 
 ExecStart=${NPM_PATH} run ${PROD_SERVER_SCRIPT_NAME}
 
@@ -103,12 +140,13 @@ systemctl start "$SERVICE_NAME.service"
 # --- Final Instructions ---
 echo ""
 echo "---------------------------------------------------------"
-echo "Service '${SERVICE_NAME}' installed and started."
+echo "Service '${SERVICE_NAME}' has been installed and started."
+echo ""
+echo "The application is now running from: ${INSTALL_DIR}"
 echo ""
 echo "IMPORTANT:"
-echo "1. Ensure you have run 'npm install' to install dependencies."
-echo "2. Ensure you have run 'npm run build' to create the production build."
-echo "3. Ensure your '.env' file exists and contains all required variables for production (e.g., NODE_ENV=production, PORT, API keys)."
+echo "-> To update the application, pull the latest changes in your source directory and re-run this install script."
+echo "-> If the service fails, check that your '.env' file in ${INSTALL_DIR} is correctly configured."
 echo ""
 echo "You can check the service status with:"
 echo "   sudo systemctl status ${SERVICE_NAME}"

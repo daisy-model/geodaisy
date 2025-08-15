@@ -11,7 +11,9 @@
       "build": "vite build",
       "server": "node server.js",
       "serve": "vite preview --host 0.0.0.0",
-      "start-prod": "npm run build && concurrently \"npm:serve\" \"npm:server\""
+      "start-prod": "npm run build && concurrently \"npm:serve\" \"npm:server\"",
+      "start-prod-server": "concurrently \"npm:serve\" \"npm:server\"",
+      "install-service": "sudo bash install-service.sh"
     },
     "dependencies": {
         "@deck.gl/core": "^8.8.0",

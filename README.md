@@ -114,7 +114,6 @@ For deploying on a Linux server, the repository includes scripts to manage the a
     npm run uninstall-service
     ```
 
-
 ## Basemap
 
 The basemap in this example is provided by [CARTO free basemap service](https://carto.com/basemaps). To use an alternative

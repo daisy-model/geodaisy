@@ -24,6 +24,7 @@ app.use(
 
 // Base URLs
 const DMI_BASE_URL = "https://dmigw.govcloud.dk";
+const HIP_BASE_URL = "https://api.dataforsyningen.dk";
 
 // Validate required environment variables
 if (
@@ -32,6 +33,11 @@ if (
 ) {
   console.error("Error: Missing required DMI API keys in environment variables!");
   process.exit(1);
+}
+
+if (!process.env.HIP_API_KEY) {
+    console.error("Error: Missing required HIP API key in environment variable");
+    process.exit(1);
 }
 
 // Helper to construct datetime argument (copied from your Helpers class)
@@ -304,6 +310,58 @@ app.get("/api/dmi/get-data", async (req, res) => {
     console.error("Get data error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+// Endpoint to get HIP data
+app.get("/api/hip/groundwater", async (req, res) => {
+    try {
+        const {
+            x, // Floating point x-coordinate in EPSG:25832 CRS
+            y, // Floating point y-coordinate in EPSG:25832 CRS
+            fromTime, // String with start time in ISO 8601 datetime format (YYYY-MM-DDThh:mm::ss)
+            toTime  // String with end time ISO 8601 datetime format (YYYY-MM-DDThh:mm::ss)
+        } = req.query;
+        if (!x || !y || !fromDate || !endData) {
+            return res.status(400).json({
+                error: "Missing required parameters (x, y, fromDate, toData)"
+            });
+        }
+        // TODO: Validate input parameters
+
+        const apiKey = process.env.HIP_API_KEY;
+
+        // TODO: Handle the two APIs v1 and v2.
+        //       - v1 is no longer updated (sice 2019). It contains data from 1990-01-01 to 2019-12-31
+        //         From the documentation it seems that we get the value of the tile that the point is
+        //         in. Possibly from the nearest tile if we pick a point outside the domain
+        //       - v2 has authentification issues (contact them if problem persists)
+        //         From the documentation it seems that we get values for each point. In some
+        //         combination of historical, realtime and forecast. Date span is not clear.
+
+        // v1
+        // v1 only accepts dates, not times
+        const fromDate = fromTime.slice(0, 10);
+        const toDate = toTime.slice(0, 10);
+        // TODO: Check the order of x and y. Sometimes x is first, sometimes y is first.
+        const point = `POINT(${x} ${y})`;
+
+        const v1_url = `${HIP_BASE_URL}/rest/hydro_model/v1.0/terraennaert-grundvand/100m?token=${apiKey}?punkt=${point}?fra=${fromDate}?to=${toDate}`;
+
+        // v2
+        const v2_url = `${HIP_BASE_URL}/rest/hydro_model_test/v2/graph/shallowgroundwater/depth/day?token=${apiKey}&x=${x}&y=${y}&startDate=${fromTime}&endDate=${toTime}`;
+
+        const response = await fetch(v1_url);
+        if (!response.ok) {
+            return res.status(response.status).json({
+                error: `HIP API Error: ${response.statusText}`
+            });
+        }
+        const data = await response.json();
+        res.json(data);
+    } catch(error) {
+        console.error("Groundwater error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
 
 // Start the server

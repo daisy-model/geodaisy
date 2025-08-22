@@ -4,6 +4,34 @@ import dotenv from "dotenv";
 import cors from "cors";
 import fetch from "node-fetch"; // You might need to install: npm install node-fetch
 
+// Functions for input validation.
+// TODO: Move elsewhere
+function check_float(x) {
+    return typeof(x) == "number" || x == parseFloat(x).toString()
+}
+
+function check_date_time(s) {
+    try {
+        return s == (new Date(s + "Z")).toISOString().slice(0, 19);
+    } catch {
+        return false;
+    }
+}
+
+// g : string in the format 'POINT(<number> <number>)'
+function get_coordinates_from_geometry_point(g) {
+    const strings = g.split('(')[1].split(" ");
+    if (strings.length != 2) {
+        console.error(`Expected 2 coordinates. Got ${strings.length}`);
+        return [0,0];
+    }
+    const coordinates = strings.map(parseFloat);
+    if (Number.isNaN(coordinates[0]) || Number.isNaN(coordinates[1])) {
+        console.error("Unable to parse coordinates");
+    }
+    return coordinates;
+}
+
 // Load environment variables from .env
 dotenv.config();
 
@@ -25,6 +53,8 @@ app.use(
 // Base URLs
 const DMI_BASE_URL = "https://dmigw.govcloud.dk";
 const HIP_BASE_URL = "https://api.dataforsyningen.dk";
+const MAPTILER_BASE_URL = "https://api.maptiler.com";
+
 
 // Validate required environment variables
 if (
@@ -39,6 +69,12 @@ if (!process.env.HIP_API_KEY) {
     console.error("Error: Missing required HIP API key in environment variable");
     process.exit(1);
 }
+
+if (!process.env.MAPTILER_API_KEY) {
+    console.error("Error: Missing required MAPTILER API key in environment variable");
+    process.exit(1);
+}
+
 
 // Helper to construct datetime argument (copied from your Helpers class)
 function constructDatetimeArgument(from_time, to_time) {
@@ -321,13 +357,33 @@ app.get("/api/hip/groundwater", async (req, res) => {
             fromTime, // String with start time in ISO 8601 datetime format (YYYY-MM-DDThh:mm::ss)
             toTime  // String with end time ISO 8601 datetime format (YYYY-MM-DDThh:mm::ss)
         } = req.query;
-        if (!x || !y || !fromDate || !endData) {
+        if (!x || !y || !fromTime || !toTime) {
             return res.status(400).json({
-                error: "Missing required parameters (x, y, fromDate, toData)"
+                error: "Missing required parameters (x, y, fromTime, toTime)"
             });
         }
-        // TODO: Validate input parameters
-
+        const param_validation_errors = []
+        if (!check_float(x)) {
+            param_validation_errors.push("Parameter 'x' must be number")
+        }
+        if (!check_float(y)) {
+            param_validation_errors.push("Parameter 'y' must be number")
+        }
+        if (!check_date_time(fromTime)) {
+            param_validation_errors.push(
+                "Parameter 'fromTime' must be a datetime string in the format YYYY-MM-DDTHH:mm:ss"
+            )
+        }
+        if (!check_date_time(toTime)) {
+            param_validation_errors.push(
+                "Parameter 'toTime' must be a datetime string in the format YYYY-MM-DDTHH:mm:ss"
+            )
+        }
+        if (param_validation_errors.length > 0) {
+            return res.status(400).json({
+                error: param_validation_errors
+            });
+        }
         const apiKey = process.env.HIP_API_KEY;
 
         // TODO: Handle the two APIs v1 and v2.
@@ -345,7 +401,7 @@ app.get("/api/hip/groundwater", async (req, res) => {
         // TODO: Check the order of x and y. Sometimes x is first, sometimes y is first.
         const point = `POINT(${x} ${y})`;
 
-        const v1_url = `${HIP_BASE_URL}/rest/hydro_model/v1.0/terraennaert-grundvand/100m?token=${apiKey}?punkt=${point}?fra=${fromDate}?to=${toDate}`;
+        const v1_url = `${HIP_BASE_URL}/rest/hydro_model/v1.0/terraennaert-grundvand/100m?token=${apiKey}&punkt=${point}&fra=${fromDate}&til=${toDate}`;
 
         // v2
         const v2_url = `${HIP_BASE_URL}/rest/hydro_model_test/v2/graph/shallowgroundwater/depth/day?token=${apiKey}&x=${x}&y=${y}&startDate=${fromTime}&endDate=${toTime}`;
@@ -357,9 +413,59 @@ app.get("/api/hip/groundwater", async (req, res) => {
             });
         }
         const data = await response.json();
-        res.json(data);
+        const dates = []
+        const depths = []
+        for (const day of data.resultater.dag) {
+            dates.push(day.dato);
+            depths.push(day.dybde);
+        }
+        const actual_coordinates = get_coordinates_from_geometry_point(data.geometry)
+        res.json({
+            tileId : data.tileId,
+            kote : data.kote,
+            request_point : { x : x, y : y },
+            actual_point : { x : actual_coordinates[0], y : actual_coordinates[1] },
+            dates : dates,
+            depths : depths
+        });
     } catch(error) {
         console.error("Groundwater error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+// Endpoint to convert from lat/long (EPSG:4236) to EPSG:25832
+app.get("/api/maptiler/transform", async (req, res) => {
+    try {
+        const {
+            longitude, // Floating point longitude
+            latitude // Floating point lattitude
+        } = req.query;
+        if (!longitude || !latitude) {
+            return res.status(400).json({
+                error: "Missing required parameters (long, lat)"
+            });
+        }
+        const apiKey = process.env.MAPTILER_API_KEY;
+        const coordinates = `${longitude},${latitude}` // Long first is the convention
+        const source = 4326
+        const target = 25832
+        const url = `${MAPTILER_BASE_URL}/coordinates/transform/${coordinates}.json?key=${apiKey}&s_srs=${source}&t_srs=${target}`
+        const response = await fetch(url);
+        if (!response.ok) {
+            return res.status(response.status).json({
+                error: `Coordinate API Error: ${response.statusText}`
+            });
+        }
+        const data = await response.json();
+        console.log(data);
+        const results = {
+            x : data.results[0].x, // This should be easting
+            y : data.results[0].y, // This should be northing
+        };
+        res.json(results);
+    } catch(error) {
+        console.error("Coordinate transform error:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 });

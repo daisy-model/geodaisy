@@ -56,7 +56,12 @@ map.on('click', async (e) => {
     soil_str = `${soil_str} ${s.type} at ${s.depth}m</br>`;
   }
   document.getElementById("parameter-text").innerHTML = `
-      <p>Location selected is: ${e.lngLat.lng.toFixed(4)}, ${e.lngLat.lat.toFixed(4)} </br></p>
+      <p>Location selected is: ${e.lngLat.lng.toFixed(4)}, ${e.lngLat.lat.toFixed(4)} </br>
+        <label for="startdate">Start date:</label>
+        <input type="date" id="startdate" name="time-start" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
+        <label for="enddate">End date:</label>
+        <input type="date" id="enddate" name="time-end" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
+      </p>
       `;
   document.getElementById("location_specific_data").innerHTML = `
         <button type="button" class="collapsible">Management</button>
@@ -76,11 +81,6 @@ map.on('click', async (e) => {
   <button type="button" class="collapsible">Weather</button>
   <div class="content">
       <p>Weather data source: <a href='https://www.dmi.dk/'>DMI</a></p>
-        <label for="startdate">Start date:</label>
-        <input type="date" id="startdate" name="time-start" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
-        <label for="enddate">End date:</label>
-        <input type="date" id="enddate" name="time-end" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
-      </br></br>
         <button id="getdmidata" type='button'>Download weather data</button></br>
         <button id="getmetadata" type='button'>Download weather meta data</button></br>
       </div>
@@ -116,7 +116,7 @@ map.on('click', async (e) => {
   document.getElementById("getpressuredata").addEventListener("click", async function () {
       clickedLayer.style.backgroundImage = SPINNING_ICON;
       // We have lat/long coordinate but we need it as easting/northing in EPSG:25832
-      await fetchCoordinate(e); // TODO: Where does e come from? Can we make it explicit?
+      const coordinates = await fetchCoordinate(e);
       const fake_time = "T00:00:00"
       const start_time = document.getElementById("startdate").value + fake_time;
       const end_time = document.getElementById("enddate").value + fake_time;

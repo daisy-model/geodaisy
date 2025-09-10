@@ -114,18 +114,23 @@ map.on('click', async (e) => {
     }), "dmi_meta.csv");
   });
   document.getElementById("getpressuredata").addEventListener("click", async function () {
-      clickedLayer.style.backgroundImage = SPINNING_ICON;
-      // We have lat/long coordinate but we need it as easting/northing in EPSG:25832
-      const coordinates = await fetchCoordinate(e);
-      const fake_time = "T00:00:00"
-      const start_time = document.getElementById("startdate").value + fake_time;
-      const end_time = document.getElementById("enddate").value + fake_time;
-      const groundwater = await HIPOpenDataClient.get_groundwater(HIP_CLIENT, coordinates.x, coordinates.y, start_time, end_time)
-      clickedLayer.style.backgroundImage = LOCATION_ICON;
+    clickedLayer.style.backgroundImage = SPINNING_ICON;
+    // We have lat/long coordinate but we need it as easting/northing in EPSG:25832
+    const coordinates = await fetchCoordinate(e);
+    const fake_time = "T00:00:00"
+    const start_time = document.getElementById("startdate").value + fake_time;
+    const end_time = document.getElementById("enddate").value + fake_time;
+    const groundwater = await HIPOpenDataClient.get_groundwater(HIP_CLIENT, coordinates.x, coordinates.y, start_time, end_time)
+    clickedLayer.style.backgroundImage = LOCATION_ICON;
+    if (!groundwater.ok) {
+      console.log("Error fetching groundwater data");
+    }
+    else {
       const file_content = format_groundwater_header(groundwater.header) + groundwater.data.toCSV(true);
       saveAs(new Blob([file_content], {
-          type: "text/plain;charset=utf-8",
+        type: "text/plain;charset=utf-8",
       }), "pressure_table.csv");
+    }
   });
   document.getElementById("getcolumndata").addEventListener("click", function () {
     const file_content = "not yet implemented";
@@ -159,20 +164,19 @@ map.on('click', async (e) => {
 //end --- testing reading the fetched data and drawing icons on the map
 
 function format_groundwater_header(h) {
-    return [
-        `# Data source : ${h.data_src}`,
-        `# License : ${h.data_license}`,
-        `# tileId : ${h.tileId}`,
-        `# Kote : ${h.kote}`,
-        `# Requested point : (${h.request_point.x} ${h.request_point.y})`,
-        `# Actual point : (${h.actual_point.x} ${h.actual_point.y})`,
-        ""
-    ].join("\n");
+  return [
+    `# Data source : ${h.data_src}`,
+    `# License : ${h.data_license}`,
+    `# Requested point : (${h.request_point.x} ${h.request_point.y})`,
+    `# Actual point : (${h.actual_point.x} ${h.actual_point.y})`,
+    `# Interpolation : (${h.interpolation})`,
+    ""
+  ].join("\n");
 }
 
 async function fetchCoordinate(e) {
-    const transformed = await CoordinateClient.transform(COORDINATE_CLIENT, e.lngLat.lat, e.lngLat.lng);
-    return transformed;
+  const transformed = await CoordinateClient.transform(COORDINATE_CLIENT, e.lngLat.lat, e.lngLat.lng);
+  return transformed;
 }
 
 async function fetchDMI(e) {

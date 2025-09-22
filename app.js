@@ -2,12 +2,16 @@ import { MapboxOverlay as DeckOverlay } from '@deck.gl/mapbox';
 import mapboxgl from 'mapbox-gl';
 import { saveAs } from 'file-saver';
 import { DMIOpenDataClient } from './src/dmi_fetch.js'
+import { CoordinateClient } from './src/coordinate_fetch.js'
+import { HIPOpenDataClient } from './src/hip_fetch.js'
 import { MyEnv } from './env.js';
 
 mapboxgl.accessToken = MyEnv.MAPBOX_TOKEN;
 
 const DMICLIENT_CLI = new DMIOpenDataClient("climateData", "v2");
 const DMICLIENT_MET = new DMIOpenDataClient("metObs", "v2");
+const COORDINATE_CLIENT = new CoordinateClient("maptiler", "v1");
+const HIP_CLIENT = new HIPOpenDataClient("hydro", "v1");
 
 const SPINNING_ICON = `url(/resources/180-ring-with-bg.svg)`;
 const LOCATION_ICON = `url(/resources/map-pin-ellipse-svgrepo-com.svg)`;
@@ -52,17 +56,24 @@ map.on('click', async (e) => {
     soil_str = `${soil_str} ${s.type} at ${s.depth}m</br>`;
   }
   document.getElementById("parameter-text").innerHTML = `
-      <p>Location selected is: ${e.lngLat.lng.toFixed(4)}, ${e.lngLat.lat.toFixed(4)} </br></p>
+      <p>Location selected is: ${e.lngLat.lng.toFixed(4)}, ${e.lngLat.lat.toFixed(4)} </br>
+        <label for="startdate">Start date:</label>
+        <input type="date" id="startdate" name="time-start" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
+        <label for="enddate">End date:</label>
+        <input type="date" id="enddate" name="time-end" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
+      </p>
       `;
   document.getElementById("location_specific_data").innerHTML = `
         <button type="button" class="collapsible">Management</button>
         <div class="content">
-        <p>Management data source: <a href='https://lbst.dk'>LBST</a></p>
+        <p> <em> ** not implemented ** </em> </p>
+        <p>Management data source: <a href='https://segesinnovation.dk/'>SEGES</a></p>
         <p>Soil usage is: Farmland, intensive </br></p>
         <button id="getfielddata" type='button'>Download management file</button></br>
         </div>
         <button type="button" class="collapsible">Soil</button>
         <div class="content">
+        <p> <em> ** not implemented ** </em> </p>
         <p>Soil data source: <a href='https://pure.au.dk/portal/da/projects/digital-jordbundskortl%C3%A6gning-ud-fra-satellit-sensordata-og-modelb'>DIGIJORD</a></p>
           <p>${soil_str}</p>
         <button id="getcolumndata" type='button'>Download soil column</button></br>
@@ -72,12 +83,7 @@ map.on('click', async (e) => {
   <button type="button" class="collapsible">Weather</button>
   <div class="content">
       <p>Weather data source: <a href='https://www.dmi.dk/'>DMI</a></p>
-        <label for="startdate">Start date:</label>
-        <input type="date" id="startdate" name="time-start" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
-        <label for="enddate">End date:</label>
-        <input type="date" id="enddate" name="time-end" value="2018-07-22" min="2018-01-01" max="2018-12-31" />
-      </br></br>
-        <button id="getdmidata" type='button'>Download weather data</button></br>
+        <button id="getdmidata" type='button'>Download raw weather data</button></br>
         <button id="getmetadata" type='button'>Download weather meta data</button></br>
       </div>
       <button type="button" class="collapsible">Hydrology</button>
@@ -109,11 +115,24 @@ map.on('click', async (e) => {
       type: "text/plain;charset=utf-8",
     }), "dmi_meta.csv");
   });
-  document.getElementById("getpressuredata").addEventListener("click", function () {
-    const file_content = "not yet implemented";
-    saveAs(new Blob([file_content], {
-      type: "text/plain;charset=utf-8",
-    }), "pressure_table.csv");
+  document.getElementById("getpressuredata").addEventListener("click", async function () {
+    clickedLayer.style.backgroundImage = SPINNING_ICON;
+    // We have lat/long coordinate but we need it as easting/northing in EPSG:25832
+    const coordinates = await fetchCoordinate(e);
+    const fake_time = "T00:00:00"
+    const start_time = document.getElementById("startdate").value + fake_time;
+    const end_time = document.getElementById("enddate").value + fake_time;
+    const groundwater = await HIPOpenDataClient.get_groundwater(HIP_CLIENT, coordinates.x, coordinates.y, start_time, end_time)
+    clickedLayer.style.backgroundImage = LOCATION_ICON;
+    if (!groundwater.ok) {
+      console.log("Error fetching groundwater data");
+    }
+    else {
+      const file_content = format_groundwater_header(groundwater.header) + groundwater.data.toCSV(true);
+      saveAs(new Blob([file_content], {
+        type: "text/plain;charset=utf-8",
+      }), "pressure_table.csv");
+    }
   });
   document.getElementById("getcolumndata").addEventListener("click", function () {
     const file_content = "not yet implemented";
@@ -145,6 +164,22 @@ map.on('click', async (e) => {
 })
 
 //end --- testing reading the fetched data and drawing icons on the map
+
+function format_groundwater_header(h) {
+  return [
+    `# Data source : ${h.data_src}`,
+    `# License : ${h.data_license}`,
+    `# Requested point : (${h.request_point.x} ${h.request_point.y})`,
+    `# Actual point : (${h.actual_point.x} ${h.actual_point.y})`,
+    `# Interpolation : (${h.interpolation})`,
+    ""
+  ].join("\n");
+}
+
+async function fetchCoordinate(e) {
+  const transformed = await CoordinateClient.transform(COORDINATE_CLIENT, e.lngLat.lat, e.lngLat.lng);
+  return transformed;
+}
 
 async function fetchDMI(e) {
   const params = ["acc_precip", "mean_temp", "mean_relative_hum", "mean_wind_speed", "mean_radiation"];

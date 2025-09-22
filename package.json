@@ -1,33 +1,34 @@
 {
-    "name": "deckgl-example-pure-js-mapbox",
-    "version": "0.0.0",
-    "private": true,
-    "license": "MIT",
-    "type": "module",
-    "scripts": {
-      "start": "vite --open",
-      "dev:server": "nodemon server.js",
-      "dev": "concurrently \"npm:dev:server\" \"npm:start\"",
-      "build": "vite build",
-      "server": "node server.js",
-      "serve": "vite preview --host 0.0.0.0",
-      "start-prod": "npm run build && concurrently \"npm:serve\" \"npm:server\""
-    },
-    "dependencies": {
-        "@deck.gl/core": "^8.8.0",
-        "@deck.gl/layers": "^8.8.0",
-        "@deck.gl/mapbox": "^8.8.0",
-        "cors": "^2.8.5",
-        "dataframe-js": "^1.4.4",
-        "dotenv": "^16.5.0",
-        "express": "^5.1.0",
-        "file-saver": "^2.0.5",
-        "mapbox-gl": "^1.13.0",
-        "node-fetch": "^3.3.2"
-    },
-    "devDependencies": {
-        "concurrently": "^8.2.2",
-        "nodemon": "^3.1.4",
-        "vite": "^4.0.0"
-    }
+  "name": "deckgl-example-pure-js-mapbox",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "vite --open",
+    "dev:server": "nodemon server.js",
+    "dev": "concurrently \"npm:dev:server\" \"npm:start\"",
+    "build": "vite build",
+    "server": "node server.js",
+    "serve": "vite preview --host 0.0.0.0",
+    "start-prod": "npm run build && concurrently \"npm:serve\" \"npm:server\"",
+    "start-prod-server": "concurrently \"npm:serve\" \"npm:server\"",
+    "install-service": "sudo bash install-service.sh",
+    "uninstall-service": "sudo bash uninstall-service.sh"
+  },
+  "dependencies": {
+    "@deck.gl/core": "^8.8.0",
+    "@deck.gl/layers": "^8.8.0",
+    "@deck.gl/mapbox": "^8.8.0",
+    "cors": "^2.8.5",
+    "dataframe-js": "^1.4.4",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "file-saver": "^2.0.5",
+    "mapbox-gl": "^1.13.0",
+    "node-fetch": "^3.3.2",
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.4",
+    "vite": "^4.0.0"
+  }
 }

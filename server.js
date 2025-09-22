@@ -161,19 +161,19 @@ async function _interp_query(query, x, y, fromTime, toTime, interpolation) {
   const y1 = y0 + 100;
   const p00 = await query(x0, y0, fromTime, toTime);
   if (!p00.ok) { return p00 }
-  console.log("p00", p00);
+  // console.log("p00", p00);
 
   const p01 = await query(x0, y1, fromTime, toTime);
   if (!p01.ok) { return p01 }
-  console.log("p01", p01);
+  // console.log("p01", p01);
 
   const p10 = await query(x1, y0, fromTime, toTime);
   if (!p10.ok) { return p10 }
-  console.log("p10", p10);
+  // console.log("p10", p10);
 
   const p11 = await query(x1, y1, fromTime, toTime);
   if (!p11.ok) { return p11 }
-  console.log("p11", p11);
+  // console.log("p11", p11);
 
   const N = p00.data.depths.length;
   if (p01.data.depths.length != N || p10.data.depths.length != N || p11.data.depths.length != N) {
@@ -186,12 +186,12 @@ async function _interp_query(query, x, y, fromTime, toTime, interpolation) {
 
   const xt = (x - x0) / (x1 - x0);
   const yt = (y - y0) / (y1 - y0);
-  console.log(xt, yt);
+  // console.log(xt, yt);
   const depths = [];
   for (let i = 0; i < N; ++i) {
     const p0 = (1 - yt) * p00.data.depths[i] + yt * p01.data.depths[i];
     const p1 = (1 - yt) * p10.data.depths[i] + yt * p11.data.depths[i];
-    console.log(p0, p1);
+    // console.log(p0, p1);
     depths.push((1 - xt) * p0 + xt * p1);
   }
   return {
@@ -597,7 +597,7 @@ app.get("/api/maptiler/transform", async (req, res) => {
       });
     }
     const data = await response.json();
-    console.log(data);
+    // console.log(data);
     const results = {
       x: data.results[0].x, // This should be easting
       y: data.results[0].y, // This should be northing

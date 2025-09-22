@@ -66,12 +66,14 @@ map.on('click', async (e) => {
   document.getElementById("location_specific_data").innerHTML = `
         <button type="button" class="collapsible">Management</button>
         <div class="content">
-        <p>Management data source: <a href='https://lbst.dk'>LBST</a></p>
+        <p> <em> ** not implemented ** </em> </p>
+        <p>Management data source: <a href='https://segesinnovation.dk/'>SEGES</a></p>
         <p>Soil usage is: Farmland, intensive </br></p>
         <button id="getfielddata" type='button'>Download management file</button></br>
         </div>
         <button type="button" class="collapsible">Soil</button>
         <div class="content">
+        <p> <em> ** not implemented ** </em> </p>
         <p>Soil data source: <a href='https://pure.au.dk/portal/da/projects/digital-jordbundskortl%C3%A6gning-ud-fra-satellit-sensordata-og-modelb'>DIGIJORD</a></p>
           <p>${soil_str}</p>
         <button id="getcolumndata" type='button'>Download soil column</button></br>
@@ -81,7 +83,7 @@ map.on('click', async (e) => {
   <button type="button" class="collapsible">Weather</button>
   <div class="content">
       <p>Weather data source: <a href='https://www.dmi.dk/'>DMI</a></p>
-        <button id="getdmidata" type='button'>Download weather data</button></br>
+        <button id="getdmidata" type='button'>Download raw weather data</button></br>
         <button id="getmetadata" type='button'>Download weather meta data</button></br>
       </div>
       <button type="button" class="collapsible">Hydrology</button>

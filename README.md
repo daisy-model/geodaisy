@@ -14,7 +14,7 @@ HIP_API_KEY="YOUR_HIP_API_KEY"
 MAPTILER_API_KEY="YOUR_MAPTILER_API_KEY"
 VITE_MAPBOX_TOKEN="YOUR_PUBLIC_MAPBOX_TOKEN"
 PORT=3000
-ALLOWED_ORIGINS=http://localhost:4173
+ALLOWED_ORIGINS="http://localhost:4173"
 ```
 
 > **Note:** Docker Compose also recognises two additional variables from your shell:

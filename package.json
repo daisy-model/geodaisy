@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "start": "vite --host 0.0.0.0 --open",
+    "start": "vite --host 0.0.0.0",
     "dev:server": "nodemon --legacy-watch server.js",
     "dev": "concurrently \"npm:dev:server\" \"npm:start\"",
     "build": "vite build",

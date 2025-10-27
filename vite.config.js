@@ -7,6 +7,8 @@ export default defineConfig({
     splitVendorChunkPlugin(), // Automatically splits vendor code
   ],
   server: {
+    host: "0.0.0.0",
+    port: Number(process.env.VITE_PORT) || 4173,
     proxy: {
       "/api": {
         target: "http://localhost:3000",
@@ -15,6 +17,7 @@ export default defineConfig({
     },
   },
   preview: {
+    port: Number(process.env.VITE_PORT) || 4173,
     allowedHosts: true // ['daisy', 'geodaisy.dk', 'localhost', '127.0.0.1']
   },
   build: {

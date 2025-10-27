@@ -30,13 +30,13 @@ The repository ships with a multi-stage `Dockerfile` and a single `docker-compos
 1.  Ensure Docker Engine and Docker Compose Plugin v2 are installed.
 2.  From the project root run:
     ```bash
-    APP_ENV=development docker compose up --build
+    APP_ENV=development docker compose up geodaisy
     ```
 3.  What you get:
     * Express API on <http://localhost:3000>.
     * Vite dev server with live reload via polling on <http://localhost:4173>.
     * File changes on your host are mirrored into the container through a bind mount, so the preview refreshes automatically.
-4.  Stop with `Ctrl+C`, or keep services running in the background with `APP_ENV=development docker compose up -d` and view aggregated logs via `docker compose logs -f`.
+4.  Stop with `Ctrl+C`, or keep the app running in the background with `APP_ENV=development docker compose up -d geodaisy` and view aggregated logs via `docker compose logs -f`.
 
 ### Production (docker compose up with Cloudflare)
 
@@ -116,4 +116,3 @@ If you manage the app directly on a Linux host (without containers), you can sti
 ## Basemap
 
 The basemap in this example is provided by [CARTO free basemap service](https://carto.com/basemaps). To use an alternative base map solution, visit [this guide](https://deck.gl/docs/get-started/using-with-map#using-other-basemap-services).
-

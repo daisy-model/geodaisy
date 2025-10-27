@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # install-service.sh
 
 # --- Configuration ---
@@ -15,16 +16,15 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# Must be run via sudo by a non-root user
-if [ -z "$SUDO_USER" ] || [ "$SUDO_USER" == "root" ]; then
-    echo "Error: This script should be run by a non-root user using 'sudo'."
-    echo "Example: sudo bash $0"
-    exit 1
+# Prefer running via sudo by a non-root user; allow root for automation
+if [ -z "${SUDO_USER:-}" ] || [ "$SUDO_USER" == "root" ]; then
+    echo "Warning: No non-root sudo user detected. The service will run as 'root'."
+    echo "It's recommended to run: sudo bash $0"
 fi
 # --- End Pre-flight checks ---
 
 # --- Environment Setup ---
-TARGET_USER=$SUDO_USER
+TARGET_USER="${SUDO_USER:-root}"
 SOURCE_DIR=$(pwd)
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
@@ -75,8 +75,8 @@ echo "Found npm at: ${NPM_PATH}"
 # --- Install dependencies and build in the new location ---
 echo "Installing production dependencies in ${INSTALL_DIR}..."
 # Run npm install as the target user to respect their environment and permissions
-if ! su - "$TARGET_USER" -c "cd \"$INSTALL_DIR\" && $NPM_PATH install --omit=dev"; then
-    echo "Error: 'npm install' failed. Please check the output above."
+if ! su - "$TARGET_USER" -c "cd \"$INSTALL_DIR\" && $NPM_PATH ci --omit=dev"; then
+    echo "Error: 'npm ci' failed. Please check the output above."
     # Clean up created directory on failure
     rm -rf "$INSTALL_DIR"
     exit 1
@@ -98,7 +98,10 @@ echo "Creating systemd service file at ${SERVICE_FILE}..."
 cat > "$SERVICE_FILE" << EOL
 [Unit]
 Description=${SERVICE_DESCRIPTION}
-After=network.target
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -110,11 +113,20 @@ WorkingDirectory=${INSTALL_DIR}
 # systemd will silently ignore this directive if the file does not exist,
 # but the application will likely fail to start without it.
 EnvironmentFile=${INSTALL_DIR}/.env
+Environment=NODE_ENV=production
+KillMode=control-group
+TimeoutStopSec=30
 
 ExecStart=${NPM_PATH} run ${PROD_SERVER_SCRIPT_NAME}
 
 Restart=on-failure
 RestartSec=10
+
+# Basic hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
 
 # Standard output and error logging
 StandardOutput=journal

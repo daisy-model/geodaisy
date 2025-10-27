@@ -89,18 +89,16 @@ npm run start-prod-server
 
 For deploying on a Linux server, the repository includes scripts to manage the application as a `systemd` service. This ensures the application restarts automatically if it crashes or the server reboots.
 
-1.  **Build the application:**
-    Ensure you have all dependencies installed (`npm install`) and have created a production build:
-    ```bash
-    npm run build
-    ```
+1.  **Prepare the environment:**
+    *   Ensure a `.env` file exists in the project root. The installer copies it alongside the deployed application.
+    *   Confirm required system utilities (`rsync`, `useradd`, `groupadd`, `systemctl`) and Node.js are installed on the server.
 
 2.  **Install the service:**
-    Run the installation script with `sudo`. This will create a `systemd` service file and start the service.
+    Run the installation script with `sudo`. This will create or reuse a dedicated system account (default `geodaisy`), copy the current project to `/opt/geodaisy`, install production dependencies, and create a `systemd` unit that runs `npm run start-prod-server`.
     ```bash
-    npm run install-service
+    sudo SERVICE_USER=<your-user-if-needed> npm run install-service
     ```
-    The service runs the `npm run start-prod-server` command.
+    Omit the `SERVICE_USER` override to let the script manage a locked-down `geodaisy` system user automatically.
 
 3.  **Manage the service:**
     You can now manage the service using standard `systemctl` commands, e.g.:
@@ -113,6 +111,23 @@ For deploying on a Linux server, the repository includes scripts to manage the a
     ```bash
     npm run uninstall-service
     ```
+
+## Docker
+
+You can build and run the project with Docker to avoid installing Node.js directly on your host.
+
+### Build and Run with Docker Compose
+
+1.  Ensure your `.env` file is present in the project root. It will be supplied to the container automatically.
+2.  Build and start the stack:
+    ```bash
+    docker compose up --build
+    ```
+3.  Access the services:
+    *   Frontend (Vite preview): <http://localhost:4173>
+    *   Backend API: <http://localhost:3000>
+
+To shut everything down, press `Ctrl+C` and run `docker compose down` if you want to remove the containers.
 
 ## Basemap
 

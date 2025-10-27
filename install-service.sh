@@ -7,6 +7,8 @@ SERVICE_NAME="geodaisy"
 SERVICE_DESCRIPTION="Geodaisy the webpage"
 PROD_SERVER_SCRIPT_NAME="start-prod-server"
 INSTALL_DIR="/opt/${SERVICE_NAME}"
+SERVICE_USER="${SERVICE_USER:-${SERVICE_NAME}}"
+SERVICE_GROUP="${SERVICE_GROUP:-${SERVICE_USER}}"
 # --- End Configuration ---
 
 # --- Pre-flight checks ---
@@ -16,15 +18,18 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# Prefer running via sudo by a non-root user; allow root for automation
-if [ -z "${SUDO_USER:-}" ] || [ "$SUDO_USER" == "root" ]; then
-    echo "Warning: No non-root sudo user detected. The service will run as 'root'."
-    echo "It's recommended to run: sudo bash $0"
-fi
+# Ensure required tools exist
+for dep in rsync systemctl useradd groupadd; do
+  if ! command -v "$dep" >/dev/null 2>&1; then
+    echo "Error: Required dependency '$dep' not found in PATH."
+    exit 1
+  fi
+done
 # --- End Pre-flight checks ---
 
 # --- Environment Setup ---
-TARGET_USER="${SUDO_USER:-root}"
+TARGET_USER="$SERVICE_USER"
+TARGET_GROUP="$SERVICE_GROUP"
 SOURCE_DIR=$(pwd)
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
@@ -32,9 +37,23 @@ echo "Installing service for user: ${TARGET_USER}"
 echo "Source directory: ${SOURCE_DIR}"
 echo "Installation directory: ${INSTALL_DIR}"
 
+# --- Ensure service account exists ---
+if id "$TARGET_USER" >/dev/null 2>&1; then
+  TARGET_GROUP=$(id -gn "$TARGET_USER")
+else
+  if ! getent group "$TARGET_GROUP" >/dev/null; then
+    echo "Creating system group '${TARGET_GROUP}'..."
+    groupadd --system "$TARGET_GROUP"
+  fi
+  echo "Creating system user '${TARGET_USER}'..."
+  useradd --system --gid "$TARGET_GROUP" --home-dir "$INSTALL_DIR" --shell /usr/sbin/nologin --no-create-home "$TARGET_USER"
+fi
+
+# --- End service account setup ---
+
 # --- Create installation directory and copy files ---
 echo "Creating installation directory..."
-mkdir -p "$INSTALL_DIR"
+install -d -m 0755 -o "$TARGET_USER" -g "$TARGET_GROUP" "$INSTALL_DIR"
 
 echo "Copying application files to ${INSTALL_DIR}..."
 # Use rsync to copy all files except development/transient ones.
@@ -55,18 +74,18 @@ else
 fi
 
 echo "Setting ownership for ${INSTALL_DIR}..."
-chown -R "$TARGET_USER:$(id -gn "$TARGET_USER")" "$INSTALL_DIR"
+chown -R "$TARGET_USER:$TARGET_GROUP" "$INSTALL_DIR"
 # --- End copy and file operations ---
 
 # --- Find npm for the target user ---
 # This is tricky because of nvm/nodenv etc.
 # We will try to find it by running a command as the user.
-NPM_PATH=$(su - "$TARGET_USER" -c 'which npm')
+NPM_PATH=$(su - "$TARGET_USER" -s /bin/sh -c 'command -v npm')
 
 if [ -z "$NPM_PATH" ]; then
     echo "Error: Could not find 'npm' in the path for user '${TARGET_USER}'."
     echo "Please ensure Node.js and npm are installed and available in the user's PATH."
-    echo "You may need to adjust the user's .bashrc or .profile."
+    echo "You can override the service user by running: SERVICE_USER=<your-user> sudo bash $0"
     exit 1
 fi
 echo "Found npm at: ${NPM_PATH}"
@@ -112,8 +131,9 @@ WorkingDirectory=${INSTALL_DIR}
 # Load environment variables from .env file in the installation directory.
 # systemd will silently ignore this directive if the file does not exist,
 # but the application will likely fail to start without it.
-EnvironmentFile=${INSTALL_DIR}/.env
+EnvironmentFile=-${INSTALL_DIR}/.env
 Environment=NODE_ENV=production
+Environment=PATH=$(dirname "$NPM_PATH"):/usr/local/bin:/usr/bin
 KillMode=control-group
 TimeoutStopSec=30
 

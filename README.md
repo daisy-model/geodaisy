@@ -1,121 +1,118 @@
 # geodaisy
 
-A web application using [Deck.gl](https://deck.gl/) and [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/api/) to visualize data, potentially including
-weather observations fetched from the DMI API.
+A web application using [Deck.gl](https://deck.gl/) and [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/api/) to visualize weather and groundwater data sourced through DMI and HIP APIs. The project pairs a Vite-powered frontend with an Express proxy backend so API keys stay server-side.
 
-This project uses:
-*   [Vite](https://vitejs.dev/) for frontend bundling and development server.
-*   [Node.js](https://nodejs.org/) with [Express](https://expressjs.com/) for a backend proxy server to securely handle API keys.
+## Environment configuration
 
-## Project Structure
+Create a `.env` file in the project root before running any workflow:
 
-*   **Frontend:** Code in `/src`, `app.js`, `index.html`, `env.js`. Handled by Vite.
-*   **Backend:** Code in `server.js`. Handles API requests to `/api/*` and securely calls external
-    APIs (like DMI).
-*   **Static Assets:** Place public static assets (like icons, images) in the `/public` directory.
+```dotenv
+# .env (never commit this)
+DMI_API_KEY_METOBS="YOUR_DMI_METOBS_API_KEY"
+DMI_API_KEY_CLIMATE="YOUR_DMI_CLIMATE_API_KEY"
+HIP_API_KEY="YOUR_HIP_API_KEY"
+MAPTILER_API_KEY="YOUR_MAPTILER_API_KEY"
+VITE_MAPBOX_TOKEN="YOUR_PUBLIC_MAPBOX_TOKEN"
+PORT=3000
+ALLOWED_ORIGINS="http://localhost:4173"
+```
 
-## Setup
+> **Note:** Docker Compose also recognises two additional variables from your shell:
+> * `APP_ENV` — `development` (default) enables hot-reload, `production` serves the built bundle.
+> * `CLOUDFLARE_TUNNEL_TOKEN` — required when exposing production traffic through Cloudflare Tunnel.
 
-1.  **Clone the repository:**
+## Docker-first workflows
+
+The repository ships with a multi-stage `Dockerfile` and a single `docker-compose.yml` that flexes between development and production based on `APP_ENV`.
+
+### Development (hot reload with docker watch)
+
+1.  Ensure Docker Engine and Docker Compose Plugin v2 are installed.
+2.  From the project root run:
     ```bash
-    git clone https://github.com/daisy-model/geodaisy || gh repo clone daisy-model/geodaisy
-    cd geodaisy
+    APP_ENV=development docker compose up geodaisy
+    ```
+3.  What you get:
+    * Express API on <http://localhost:3000>.
+    * Vite dev server with live reload via polling on <http://localhost:4173>.
+    * File changes on your host are mirrored into the container through a bind mount, so the preview refreshes automatically.
+4.  Stop with `Ctrl+C`, or keep the app running in the background with `APP_ENV=development docker compose up -d geodaisy` and view aggregated logs via `docker compose logs -f`.
+
+### Production (docker compose up with Cloudflare)
+
+1.  Generate or copy an existing Cloudflare Tunnel token. Save it securely—Compose expects it via `CLOUDFLARE_TUNNEL_TOKEN`.
+2.  Build and start the hardened stack:
+    ```bash
+    APP_ENV=production \
+    CLOUDFLARE_TUNNEL_TOKEN=YOUR_TUNNEL_TOKEN \
+    docker compose up --build -d
+    ```
+3.  Behaviour in production mode:
+    * The container boots from the production stage of the multi-stage build and serves pre-built assets with `npm run start-prod-server`.
+    * The Cloudflare sidecar only activates when `APP_ENV=production` **and** a tunnel token is present; otherwise it idles safely.
+    * Default ports remain published locally (3000 API, 4173 preview) for health checks or internal access.
+4.  Rotate or revoke the tunnel by updating `CLOUDFLARE_TUNNEL_TOKEN` and re-running `docker compose up -d`.
+5.  Tear everything down with:
+    ```bash
+    APP_ENV=production docker compose down --remove-orphans
     ```
 
-1.  **Install dependencies:**
-    (This installs dependencies for both frontend and backend)
+### Useful docker commands
+
+```bash
+# Rebuild after dependency changes
+APP_ENV=development docker compose build
+
+# Tail logs for both services
+docker compose logs -f
+
+# Run a one-off command in the app container
+docker compose exec geodaisy npm test
+```
+
+## Optional: local Node.js workflows
+
+Running outside Docker is still supported when Node.js 20+ is installed locally.
+
+1.  Install dependencies:
     ```bash
     npm install
-    # or
-    yarn install
     ```
-
-1.  **Configure The Environment:**
-    *   Create a file named `.env` in the project root directory.
-    *   Add your secret DMI API keys to this file:
-        ```dotenv
-        # .env - DO NOT COMMIT THIS FILE!
-        DMI_API_KEY_METOBS="YOUR_DMI_METOBS_API_KEY"
-        DMI_API_KEY_CLIMATE="YOUR_DMI_CLIMATE_API_KEY"
-        VITE_MAPBOX_TOKEN="YOUR_PUBLIC_MAPBOX_TOKEN"
-        ```
-
-## Development
-
-To run the application locally for development:
-
-1.  **Run the development script:** ```bash npm run dev ``` This command concurrently starts:
-    *   The backend Node.js server (using `nodemon` for auto-restarts) on its port (default 3000).
-    *   The Vite frontend development server on its port (default 5173).
-
-2.  **Access the application:** Open your browser to the URL provided by Vite (e.g.,
-    `http://localhost:5173`).
-
-The Vite dev server will automatically proxy API requests starting with `/api/` to your backend
-server, thanks to the configuration in `vite.config.js`.
-
-## Production
-
-Instructions for building, running, and deploying the application in a production environment.
-
-### Building the Application
-
-To create an optimized build of the frontend application for production:
-
-```bash
-npm run build
-```
-
-This command generates static HTML, CSS, and JavaScript files in the `dist` directory.
-
-### Running the Production Build
-
-After building, you can run the production-ready application.
-
-The easiest way to start both the backend server and the frontend server is:
-
-```bash
-npm run start-prod
-```
-
-This command first runs `npm run build` and then concurrently starts both the backend API server and the Vite preview server for the static frontend files.
-
-If you have already built the application and want to skip the build step, you can run:
-```bash
-npm run start-prod-server
-```
-
-### Deploying as a Service (Linux)
-
-For deploying on a Linux server, the repository includes scripts to manage the application as a `systemd` service. This ensures the application restarts automatically if it crashes or the server reboots.
-
-1.  **Build the application:**
-    Ensure you have all dependencies installed (`npm install`) and have created a production build:
+2.  Start the dev experience:
+    ```bash
+    npm run dev
+    ```
+    The command concurrently launches the backend (`nodemon`) and Vite dev server (now bound to `0.0.0.0` for parity with Docker).
+3.  Build for production or serve locally:
     ```bash
     npm run build
+    npm run start-prod-server
     ```
 
-2.  **Install the service:**
-    Run the installation script with `sudo`. This will create a `systemd` service file and start the service.
+## Optional: deploying as a systemd service
+
+If you manage the app directly on a Linux host (without containers), you can still use the included `install-service.sh`.
+
+1.  Ensure prerequisites are installed: `rsync`, `useradd`, `groupadd`, `systemctl`, Node.js/npm, and that your `.env` file is present.
+2.  Install the service (the script provisions a locked-down `geodaisy` system user by default):
     ```bash
-    npm run install-service
+    sudo SERVICE_USER=<your-user-if-needed> npm run install-service
     ```
-    The service runs the `npm run start-prod-server` command.
-
-3.  **Manage the service:**
-    You can now manage the service using standard `systemctl` commands, e.g.:
-    *   `sudo systemctl status geodaisy.service`
-    *   `sudo systemctl stop geodaisy.service`
-    *   `sudo systemctl start geodaisy.service`
-
-4.  **Uninstall the service:**
-    To stop and remove the `systemd` service:
+3.  Manage the service via standard commands:
+    * `sudo systemctl status geodaisy.service`
+    * `sudo systemctl stop geodaisy.service`
+    * `sudo systemctl start geodaisy.service`
+4.  Uninstall cleanly:
     ```bash
     npm run uninstall-service
     ```
 
+## Project structure
+
+* **Frontend:** `/src`, `app.js`, `index.html`, `env.js`.
+* **Backend:** `server.js` exposes `/api/*` endpoints and mediates external API requests.
+* **Static assets:** Store icons and images in `/public`.
+
 ## Basemap
 
-The basemap in this example is provided by [CARTO free basemap service](https://carto.com/basemaps). To use an alternative
-base map solution, visit [this guide](https://deck.gl/docs/get-started/using-with-map#using-other-basemap-services).
-
+The basemap in this example is provided by [CARTO free basemap service](https://carto.com/basemaps). To use an alternative base map solution, visit [this guide](https://deck.gl/docs/get-started/using-with-map#using-other-basemap-services).

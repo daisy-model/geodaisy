@@ -232,7 +232,7 @@ const port = process.env.PORT || 3000;
 // Configure CORS for development
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : ["http://localhost:5173"]; // Default for development
+  : ["http://localhost:4173"];
 
 app.use(
   cors({
@@ -246,24 +246,39 @@ const DMI_BASE_URL = "https://dmigw.govcloud.dk";
 const HIP_BASE_URL = "https://api.dataforsyningen.dk";
 const MAPTILER_BASE_URL = "https://api.maptiler.com";
 
+const appEnv = process.env.APP_ENV || process.env.NODE_ENV || "development";
+const isDevelopment = appEnv === "development";
+const hasDmiMetObsKey = Boolean(process.env.DMI_API_KEY_METOBS);
+const hasDmiClimateKey = Boolean(process.env.DMI_API_KEY_CLIMATE);
+const hasHipKey = Boolean(process.env.HIP_API_KEY);
+const hasMaptilerKey = Boolean(process.env.MAPTILER_API_KEY);
 
-// Validate required environment variables
-if (
-  !process.env.DMI_API_KEY_METOBS ||
-  !process.env.DMI_API_KEY_CLIMATE
-) {
-  console.error("Error: Missing required DMI API keys in environment variables!");
-  process.exit(1);
+if (!hasDmiMetObsKey || !hasDmiClimateKey) {
+  const message = "Missing required DMI API keys in environment variables";
+  if (isDevelopment) {
+    console.warn(`Warning: ${message}. DMI endpoints will return 503 until keys are provided.`);
+  } else {
+    console.error(`Error: ${message}!`);
+    process.exit(1);
+  }
 }
 
-if (!process.env.HIP_API_KEY) {
-  console.error("Error: Missing required HIP API key in environment variable");
-  process.exit(1);
+if (!hasHipKey) {
+  if (isDevelopment) {
+    console.warn("Warning: Missing required HIP API key in environment variable. HIP endpoints will return 503.");
+  } else {
+    console.error("Error: Missing required HIP API key in environment variable");
+    process.exit(1);
+  }
 }
 
-if (!process.env.MAPTILER_API_KEY) {
-  console.error("Error: Missing required MAPTILER API key in environment variable");
-  process.exit(1);
+if (!hasMaptilerKey) {
+  if (isDevelopment) {
+    console.warn("Warning: Missing required MAPTILER API key in environment variable. Coordinate transform endpoint will return 503.");
+  } else {
+    console.error("Error: Missing required MAPTILER API key in environment variable");
+    process.exit(1);
+  }
 }
 
 
@@ -304,9 +319,15 @@ app.get("/api/dmi/stations", async (req, res) => {
     let apiName;
 
     if (api === "climate") {
+      if (!hasDmiClimateKey) {
+        return res.status(503).json({ error: "DMI climate API key not configured" });
+      }
       apiKey = process.env.DMI_API_KEY_CLIMATE;
       apiName = "climateData";
     } else if (api === "metobs") {
+      if (!hasDmiMetObsKey) {
+        return res.status(503).json({ error: "DMI metObs API key not configured" });
+      }
       apiKey = process.env.DMI_API_KEY_METOBS;
       apiName = "metObs";
     } else {
@@ -343,9 +364,15 @@ app.get("/api/dmi/closest-station", async (req, res) => {
     let apiName;
 
     if (api === "climate") {
+      if (!hasDmiClimateKey) {
+        return res.status(503).json({ error: "DMI climate API key not configured" });
+      }
       apiKey = process.env.DMI_API_KEY_CLIMATE;
       apiName = "climateData";
     } else if (api === "metobs") {
+      if (!hasDmiMetObsKey) {
+        return res.status(503).json({ error: "DMI metObs API key not configured" });
+      }
       apiKey = process.env.DMI_API_KEY_METOBS;
       apiName = "metObs";
     } else {
@@ -432,6 +459,10 @@ app.get("/api/dmi/climate-data", async (req, res) => {
       });
     }
 
+    if (!hasDmiClimateKey) {
+      return res.status(503).json({ error: "DMI climate API key not configured" });
+    }
+
     const apiKey = process.env.DMI_API_KEY_CLIMATE;
     const datetime = constructDatetimeArgument(fromTime, toTime);
 
@@ -469,6 +500,10 @@ app.get("/api/dmi/get-data", async (req, res) => {
       return res.status(400).json({
         error: "Missing required parameters (lat, lng, params)"
       });
+    }
+
+    if (!hasDmiClimateKey) {
+      return res.status(503).json({ error: "DMI climate API key not configured" });
     }
 
     const paramArray = params.split(",");
@@ -550,6 +585,10 @@ app.get("/api/hip/groundwater", async (req, res) => {
       interpolation, // String with interpolation method, on of {"none", "bilinear"}
       apiVersion // Int to select between v1 and v2 of the API
     } = req.query;
+
+    if (!hasHipKey) {
+      return res.status(503).json({ error: "HIP API key not configured" });
+    }
     const param_validation_errors = validate_hip_parameters(x, y, fromTime, toTime, interpolation, apiVersion);
     if (param_validation_errors.length > 0) {
       return res.status(400).json({
@@ -584,6 +623,9 @@ app.get("/api/maptiler/transform", async (req, res) => {
       return res.status(400).json({
         error: "Missing required parameters (long, lat)"
       });
+    }
+    if (!hasMaptilerKey) {
+      return res.status(503).json({ error: "MapTiler API key not configured" });
     }
     const apiKey = process.env.MAPTILER_API_KEY;
     const coordinates = `${longitude},${latitude}` // Long first is the convention

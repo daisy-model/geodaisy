@@ -1,0 +1,45 @@
+---
+
+volumes:
+  node_modules_cache: {}
+
+services:
+  geodaisy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${APP_ENV:-development}
+    command: >-
+      sh -c '
+        if [ "${APP_ENV:-development}" = "production" ]; then
+          npm run start-prod-server;
+        else
+          npm run dev;
+        fi
+      '
+
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      NODE_ENV: ${APP_ENV:-development}
+      CHOKIDAR_USEPOLLING: "true"
+      NODEMON_USE_POLLING: "1"
+      VITE_PORT: ${VITE_PORT:-4173}
+      HIP_API_KEY: ${HIP_API_KEY:-DUMMY_HIP_API_KEY}
+    ports:
+      - "3000:3000"
+      - "${VITE_PORT:-4173}:4173"
+    volumes:
+      - .:/app
+      - node_modules_cache:/app/node_modules
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      CLOUDFLARE_TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - geodaisy
+    restart: unless-stopped
